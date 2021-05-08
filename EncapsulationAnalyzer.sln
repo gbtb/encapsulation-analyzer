@@ -5,8 +5,6 @@ VisualStudioVersion = 16.0.30804.86
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EncapsulationAnalyzer", "EncapsulationAnalyzer\EncapsulationAnalyzer\EncapsulationAnalyzer.csproj", "{52492554-F2E2-456A-9254-43CF827A37D4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EncapsulationAnalyzer.Package", "EncapsulationAnalyzer\EncapsulationAnalyzer.Package\EncapsulationAnalyzer.Package.csproj", "{794E9F78-67D9-4A49-A29D-D641EDBEF688}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EncapsulationAnalyzer.Test", "EncapsulationAnalyzer\EncapsulationAnalyzer.Test\EncapsulationAnalyzer.Test.csproj", "{23AC95A5-98BC-4E4A-8845-2D5E54CEE232}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EncapsulationAnalyzer.CLI", "EncapsulationAnalyzer.CLI\EncapsulationAnalyzer.CLI.csproj", "{254BDA04-4A21-4D90-8EE2-30406D5A6BA7}"
@@ -23,10 +21,6 @@ Global
 		{52492554-F2E2-456A-9254-43CF827A37D4}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{52492554-F2E2-456A-9254-43CF827A37D4}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{52492554-F2E2-456A-9254-43CF827A37D4}.Release|Any CPU.Build.0 = Release|Any CPU
-		{794E9F78-67D9-4A49-A29D-D641EDBEF688}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{794E9F78-67D9-4A49-A29D-D641EDBEF688}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{794E9F78-67D9-4A49-A29D-D641EDBEF688}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{794E9F78-67D9-4A49-A29D-D641EDBEF688}.Release|Any CPU.Build.0 = Release|Any CPU
 		{23AC95A5-98BC-4E4A-8845-2D5E54CEE232}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{23AC95A5-98BC-4E4A-8845-2D5E54CEE232}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{23AC95A5-98BC-4E4A-8845-2D5E54CEE232}.Release|Any CPU.ActiveCfg = Release|Any CPU
