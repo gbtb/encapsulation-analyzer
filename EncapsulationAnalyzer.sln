@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EncapsulationAnalyzer.Test"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EncapsulationAnalyzer.CLI", "EncapsulationAnalyzer.CLI\EncapsulationAnalyzer.CLI.csproj", "{254BDA04-4A21-4D90-8EE2-30406D5A6BA7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EncapsulationAnalyzer.Core", "EncapsulationAnalyzer.Core\EncapsulationAnalyzer.Core.csproj", "{7254B5AD-AA09-467B-98DA-FCC880303AD2}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -33,6 +35,10 @@ Global
 		{254BDA04-4A21-4D90-8EE2-30406D5A6BA7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{254BDA04-4A21-4D90-8EE2-30406D5A6BA7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{254BDA04-4A21-4D90-8EE2-30406D5A6BA7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7254B5AD-AA09-467B-98DA-FCC880303AD2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7254B5AD-AA09-467B-98DA-FCC880303AD2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7254B5AD-AA09-467B-98DA-FCC880303AD2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7254B5AD-AA09-467B-98DA-FCC880303AD2}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
