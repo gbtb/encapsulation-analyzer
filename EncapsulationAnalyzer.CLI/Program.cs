@@ -1,13 +1,13 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.CodeAnalysis.MSBuild;
+using System.CommandLine;
+using System.CommandLine.Invocation;
+using Spectre.Console;
 
 namespace EncapsulationAnalyzer.CLI
 {
@@ -18,46 +18,67 @@ namespace EncapsulationAnalyzer.CLI
             MSBuildLocator.RegisterDefaults();
         }
         
-        static async Task Main(string[] args)
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="action">Action which should be performed</param>
+        /// <param name="solutionPath">Path to a solution file</param>
+        /// <param name="projectName">Name of a project for analysis</param>
+        static async Task Main(params string[] args)
         {
-            var slnPath = @"C:\projects\websales-git-ssd\SalesWebSite.sln";
-            var projPath = @"C:\projects\websales-git-ssd\Dns.Sales\Dns.Sales.csproj";
-
-            var workspace = MSBuildWorkspace.Create();
-            workspace.WorkspaceFailed += HandleWorkspaceFailure;
-            
-            var solution = await workspace.OpenSolutionAsync(slnPath);
-            var proj = solution.Projects.FirstOrDefault(p => p.FilePath == projPath);
-            if (proj == null)
+            var root = new RootCommand
             {
-                await Console.Error.WriteLineAsync($"Project not found: {projPath}");
-                return;
-            }
+                Description = "CLI interface for finding public .Net types which can be made internal"
+            };
 
-            var otherDocs = GetDocsToSearchIn(solution, proj);
-
-            var compilation = await proj.GetCompilationAsync();
-
-            var publicSymbols = GetNamedTypeSymbols(compilation, compilation.Assembly, s => s.DeclaredAccessibility == Accessibility.Public).ToList();
-            foreach (var publicSymbol in publicSymbols)
+            var analyzeCommand = new Command("analyze",
+                "Analyze project from a solution and find all types in this project which can be made internal")
             {
-                var source = new CancellationTokenSource();
-                var progressMonitor = new FindRefProgress(source, proj);
-                var refs = await SymbolFinder.FindReferencesAsync(publicSymbol, solution, progressMonitor, otherDocs, CancellationToken.None);
-                var referencedSymbol = refs?.FirstOrDefault(r => r.Locations.Any());
-                if (referencedSymbol != null)
-                {
-                    Console.WriteLine($"Symbol {referencedSymbol.Definition.ToDisplayString()} is used by other project: {referencedSymbol.Locations.FirstOrDefault()}");
-                    continue;
-                }
+                Handler = CommandHandler.Create<FileInfo, string>(AnalyzeCommand)
+            };
+            analyzeCommand.AddArgument(new Argument<FileInfo>("solutionPath"));
+            analyzeCommand.AddArgument(new Argument<string>("projectName"));
+            root.AddCommand(analyzeCommand);
+            //var slnPath = @"C:\projects\websales-git-ssd\SalesWebSite.sln";
+            //var projPath = @"C:\projects\websales-git-ssd\Dns.Sales\Dns.Sales.csproj";
+
+
+            await root.InvokeAsync(args);
+        }
+
+        private static async Task<int> AnalyzeCommand(FileInfo solutionPath, string projectName)
+        {
+            try
+            {
+                var workspace = MSBuildWorkspace.Create();
+                workspace.WorkspaceFailed += HandleWorkspaceFailure;
                 
-                Console.WriteLine($"Public symbol {publicSymbol.ToDisplayString()} can be made internal");
+                var solution = await workspace.OpenSolutionAsync(solutionPath.ToString());
+                var proj = solution.Projects.FirstOrDefault(p => p.Name == projectName);
+                if (proj == null)
+                {
+                    AnsiConsole.Write($"Project not found: {projectName}");
+                    return -1;
+                }
+
+                return 0;
+            }
+            catch (Exception e)
+            {
+                AnsiConsole.WriteException(e);
+                return -1;
             }
         }
 
         private static void HandleWorkspaceFailure(object sender, WorkspaceDiagnosticEventArgs e)
         {
-            Console.Error.WriteLine(e.Diagnostic.ToString());
+            AnsiConsole.WriteLine(e.Diagnostic.ToString());
         }
+    }
+
+    internal enum CommandVerb
+    {
+        Analyze,
+        Fix
     }
 }

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Linq;
 using System.Threading;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Threading.Tasks;
 using EncapsulationAnalyzer.Core;
 using Microsoft.CodeAnalysis;
@@ -27,7 +26,7 @@ namespace EncapsulationAnalyzer.Test
         }
         
         [Test]
-        public async Task TestMethod1()
+        public async Task TwoSimpleProjectsTwoSimpleClassesTest()
         {
             var workspace = new AdhocWorkspace();
             var solution = workspace.AddSolution(SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default));
