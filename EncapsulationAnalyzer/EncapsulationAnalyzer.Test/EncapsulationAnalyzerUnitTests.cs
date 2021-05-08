@@ -72,7 +72,7 @@ namespace EncapsulationAnalyzer.Test
             var service = _provider.GetRequiredService<IFindInternalClassesPort>();
             var source = new CancellationTokenSource();
             //source.CancelAfter(TimeSpan.FromSeconds(10));
-            var internalSymbols = await service.FindProjClassesWhichCanBeInternalAsync(workspace.CurrentSolution, libProject.Id, source.Token);
+            var internalSymbols = await service.FindProjClassesWhichCanBeInternalAsync(workspace.CurrentSolution, libProject.Id, new Progress<FindInternalClassesProgress>(), source.Token);
             Assert.AreEqual(1, internalSymbols.Count());
             Assert.AreEqual("Bar", internalSymbols.Single().Name);
         }
