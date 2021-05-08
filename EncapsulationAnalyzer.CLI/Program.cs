@@ -6,7 +6,15 @@ using Microsoft.Build.Locator;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.MSBuild;
 using System.CommandLine;
+using System.CommandLine.Builder;
+using System.CommandLine.Hosting;
 using System.CommandLine.Invocation;
+using System.CommandLine.Parsing;
+using System.Threading;
+using EncapsulationAnalyzer.Core;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Spectre.Console;
 
 namespace EncapsulationAnalyzer.CLI
@@ -24,44 +32,93 @@ namespace EncapsulationAnalyzer.CLI
         /// <param name="action">Action which should be performed</param>
         /// <param name="solutionPath">Path to a solution file</param>
         /// <param name="projectName">Name of a project for analysis</param>
-        static async Task Main(params string[] args)
+        static async Task<int> Main(params string[] args)
         {
+            
             var root = new RootCommand
             {
                 Description = "CLI interface for finding public .Net types which can be made internal"
             };
 
+            var logOption = new Option<LogLevel>("--logLevel", description: "Set logging level, default level: info", getDefaultValue: () => LogLevel.Information);
+            root.AddOption(logOption);
+            var res = root.Parse(args);
+            var logLevel = res.ValueForOption(logOption);
+
             var analyzeCommand = new Command("analyze",
                 "Analyze project from a solution and find all types in this project which can be made internal")
             {
-                Handler = CommandHandler.Create<FileInfo, string>(AnalyzeCommand)
+                Handler = CommandHandler.Create<IHost, FileInfo, string>(AnalyzeCommand)
             };
+            
             analyzeCommand.AddArgument(new Argument<FileInfo>("solutionPath"));
             analyzeCommand.AddArgument(new Argument<string>("projectName"));
-            root.AddCommand(analyzeCommand);
-            //var slnPath = @"C:\projects\websales-git-ssd\SalesWebSite.sln";
-            //var projPath = @"C:\projects\websales-git-ssd\Dns.Sales\Dns.Sales.csproj";
+            var parser = new CommandLineBuilder(root)
+                .UseHelp()
+                .UseVersionOption()
+                .AddCommand(analyzeCommand)
+                .UseHost(h => h.ConfigureServices((context, services) =>
+                {
+                    services
+                        .AddLogging(b => b.AddSpectreConsole(configuration => configuration.LogLevel = logLevel))
+                        .AddSingleton<IFindInternalClassesPort, FindInternalClasses>();
+                })).Build();
 
-
-            await root.InvokeAsync(args);
+            return await parser.InvokeAsync(args);
         }
 
-        private static async Task<int> AnalyzeCommand(FileInfo solutionPath, string projectName)
+        private static async Task<int> AnalyzeCommand(IHost host, FileInfo solutionPath, string projectName)
         {
             try
             {
-                var workspace = MSBuildWorkspace.Create();
-                workspace.WorkspaceFailed += HandleWorkspaceFailure;
-                
-                var solution = await workspace.OpenSolutionAsync(solutionPath.ToString());
-                var proj = solution.Projects.FirstOrDefault(p => p.Name == projectName);
-                if (proj == null)
+                return await AnsiConsole.Progress().AutoClear(false)
+                    .Columns(new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new ElapsedTimeColumn()).
+                    StartAsync(async progressContext =>
                 {
-                    AnsiConsole.Write($"Project not found: {projectName}");
-                    return -1;
-                }
+                    var progressSubscriber = new AnsiConsoleProgressSubscriber(progressContext);
+                    progressSubscriber.Report(new FindInternalClassesProgress
+                    {
+                        Step = FindInternalClassesStep.LoadSolution,
+                        CurrentValue = 0
+                    });
+                    var logger = host.Services.GetRequiredService<ILogger<Program>>();
+                    var workspace = MSBuildWorkspace.Create();
+                    workspace.WorkspaceFailed += HandleWorkspaceFailure(logger);
+                
+                    var solution = await workspace.OpenSolutionAsync(solutionPath.ToString(), progressSubscriber);
+                    var proj = solution.Projects.FirstOrDefault(p => p.Name == projectName);
+                    if (proj == null)
+                    {
+                        AnsiConsole.Write($"Project not found: {projectName}");
+                        return -1;
+                    }
+                    
+                    progressSubscriber.Report(new FindInternalClassesProgress
+                    {
+                        Step = FindInternalClassesStep.LoadSolution,
+                        CurrentValue = 100
+                    });
 
-                return 0;
+                    var port = host.Services.GetRequiredService<IFindInternalClassesPort>();
+                    var progress = AnsiConsole.Progress().AutoClear(false);
+                    var internalSymbols = await port.FindProjClassesWhichCanBeInternalAsync(solution, proj.Id,
+                        progressSubscriber,
+                        CancellationToken.None);
+                    AnsiConsole.WriteLine($"Found {internalSymbols.Count()} public types which can be made internal");
+
+                    var table = new Table();
+                    table.AddColumn("Type").AddColumn("Location");
+
+                    foreach (var symbol in internalSymbols)
+                    {
+                        table.AddRow($"{symbol.Kind} {symbol.Name}", symbol.Locations.FirstOrDefault()?.GetLineSpan().ToString() ?? "");
+                    }
+                
+                    AnsiConsole.Render(table);
+                
+                    return 0;
+                });
+                
             }
             catch (Exception e)
             {
@@ -70,15 +127,9 @@ namespace EncapsulationAnalyzer.CLI
             }
         }
 
-        private static void HandleWorkspaceFailure(object sender, WorkspaceDiagnosticEventArgs e)
+        private static EventHandler<WorkspaceDiagnosticEventArgs> HandleWorkspaceFailure(ILogger logger)
         {
-            AnsiConsole.WriteLine(e.Diagnostic.ToString());
+            return (object sender, WorkspaceDiagnosticEventArgs e) => logger.LogTrace("Error/Warning while opening solution: {Message}",e.Diagnostic.ToString());
         }
-    }
-
-    internal enum CommandVerb
-    {
-        Analyze,
-        Fix
     }
 }

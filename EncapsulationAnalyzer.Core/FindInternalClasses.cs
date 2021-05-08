@@ -19,8 +19,14 @@ namespace EncapsulationAnalyzer.Core
             _logger = logger;
         }
 
-        public async Task<IEnumerable<INamedTypeSymbol>> FindProjClassesWhichCanBeInternalAsync(Solution solution, ProjectId projectId, CancellationToken token)
+        public async Task<IEnumerable<INamedTypeSymbol>> FindProjClassesWhichCanBeInternalAsync(Solution solution, ProjectId projectId,  IProgress<FindInternalClassesProgress> progressSubscriber,  CancellationToken token)
         {
+            progressSubscriber.Report(new FindInternalClassesProgress
+            {
+                Step = FindInternalClassesStep.GetPublicSymbols,
+                CurrentValue = 0
+            });
+            
             var proj = solution.GetProject(projectId);
             if (proj == null)
             {
@@ -35,14 +41,45 @@ namespace EncapsulationAnalyzer.Core
             }
 
             var publicSymbols = GetNamedTypeSymbols(compilation, compilation.Assembly,
-                s => s.DeclaredAccessibility == Accessibility.Public);
+                s => s.DeclaredAccessibility == Accessibility.Public).ToList();
+            progressSubscriber.Report(new FindInternalClassesProgress
+            {
+                Step = FindInternalClassesStep.GetPublicSymbols,
+                CurrentValue = 100
+            });
+            progressSubscriber.Report(new FindInternalClassesProgress
+            {
+                Step = FindInternalClassesStep.GetDocsToSearch,
+                CurrentValue = 0
+            });
+            
             var docsToSearchIn = GetDocsToSearchIn(solution, proj);
+            progressSubscriber.Report(new FindInternalClassesProgress
+            {
+                Step = FindInternalClassesStep.GetDocsToSearch,
+                CurrentValue = 100
+            });
+            
+            progressSubscriber.Report(new FindInternalClassesProgress
+            {
+                Step = FindInternalClassesStep.LookForReferencesInOtherProjects,
+                CurrentValue = 0,
+                MaxValue = publicSymbols.Count
+            });
+            var i = 0;
 
             var resultList = new List<INamedTypeSymbol>();
             foreach (var publicSymbol in publicSymbols)
             {
                 if (token.IsCancellationRequested)
                     return Enumerable.Empty<INamedTypeSymbol>();
+                
+                progressSubscriber.Report(new FindInternalClassesProgress
+                {
+                    Step = FindInternalClassesStep.LookForReferencesInOtherProjects,
+                    CurrentValue = ++i,
+                    MaxValue = publicSymbols.Count
+                });
                 
                 var source = CancellationTokenSource.CreateLinkedTokenSource(token);
                 var searchController = new FindReferencesSearchController(_logger, source, proj);
