@@ -36,13 +36,7 @@ namespace EncapsulationAnalyzer
             // TODO: Consider registering other actions that act on syntax instead of or in addition to symbols
             // See https://github.com/dotnet/roslyn/blob/master/docs/analyzers/Analyzer%20Actions%20Semantics.md for more information
             context.RegisterSymbolAction(AnalyzeSymbol, SymbolKind.NamedType);
-            context.RegisterCompilationStartAction(AnalyzeCompilation);
             //context.
-        }
-
-        private async Task AnalyzeCompilation(CompilationStartAnalysisContext context)
-        {
-            context.Compilation.Ass
         }
 
         private static void AnalyzeSymbol(SymbolAnalysisContext context)
