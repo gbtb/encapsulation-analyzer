@@ -10,6 +10,7 @@ using System.CommandLine.Builder;
 using System.CommandLine.Hosting;
 using System.CommandLine.Invocation;
 using System.CommandLine.Parsing;
+using System.Text.RegularExpressions;
 using System.Threading;
 using EncapsulationAnalyzer.Core;
 using Microsoft.Extensions.DependencyInjection;
@@ -60,7 +61,13 @@ namespace EncapsulationAnalyzer.CLI
                 .UseHost(h => h.ConfigureServices((context, services) =>
                 {
                     services
-                        .AddLogging(b => b.AddSpectreConsole(configuration => configuration.LogLevel = logLevel))
+                        .AddLogging(b => b
+                            .AddFilter("Microsoft", LogLevel.Warning)
+                            .AddFilter(l => l >= logLevel)
+                            .AddSpectreConsole(configuration =>
+                            {
+                                configuration.LogLevel = logLevel;
+                            }))
                         .AddSingleton<IFindInternalClassesPort, FindInternalClasses>();
                 })).Build();
 
@@ -76,11 +83,7 @@ namespace EncapsulationAnalyzer.CLI
                     StartAsync(async progressContext =>
                 {
                     var progressSubscriber = new AnsiConsoleProgressSubscriber(progressContext);
-                    progressSubscriber.Report(new FindInternalClassesProgress
-                    {
-                        Step = FindInternalClassesStep.LoadSolution,
-                        CurrentValue = 0
-                    });
+                    progressSubscriber.Report(new FindInternalClassesProgress(FindInternalClassesStep.LoadSolution, 0));
                     var logger = host.Services.GetRequiredService<ILogger<Program>>();
                     var workspace = MSBuildWorkspace.Create();
                     workspace.WorkspaceFailed += HandleWorkspaceFailure(logger);
@@ -93,25 +96,22 @@ namespace EncapsulationAnalyzer.CLI
                         return -1;
                     }
                     
-                    progressSubscriber.Report(new FindInternalClassesProgress
-                    {
-                        Step = FindInternalClassesStep.LoadSolution,
-                        CurrentValue = 100
-                    });
+                    progressSubscriber.Report(
+                        new FindInternalClassesProgress(FindInternalClassesStep.LoadSolution, 100));
 
                     var port = host.Services.GetRequiredService<IFindInternalClassesPort>();
-                    var progress = AnsiConsole.Progress().AutoClear(false);
                     var internalSymbols = await port.FindProjClassesWhichCanBeInternalAsync(solution, proj.Id,
                         progressSubscriber,
                         CancellationToken.None);
                     AnsiConsole.WriteLine($"Found {internalSymbols.Count()} public types which can be made internal");
 
                     var table = new Table();
-                    table.AddColumn("Type").AddColumn("Location");
+                    table.AddColumn("№").AddColumn("Type").AddColumn("Location");
 
+                    var i = 0;
                     foreach (var symbol in internalSymbols)
                     {
-                        table.AddRow($"{symbol.Kind} {symbol.Name}", symbol.Locations.FirstOrDefault()?.GetLineSpan().ToString() ?? "");
+                        table.AddRow($"{++i}", $"{symbol.TypeKind} {symbol.Name}", symbol.Locations.FirstOrDefault()?.GetLineSpan().ToString() ?? string.Empty);
                     }
                 
                     AnsiConsole.Render(table);
@@ -127,9 +127,12 @@ namespace EncapsulationAnalyzer.CLI
             }
         }
 
+        //regex to replace chars which can be interpreted as Spectre.Console markup
+        static Regex replaceRegex = new Regex(@"[\[\]]", RegexOptions.Compiled);
+        
         private static EventHandler<WorkspaceDiagnosticEventArgs> HandleWorkspaceFailure(ILogger logger)
         {
-            return (object sender, WorkspaceDiagnosticEventArgs e) => logger.LogTrace("Error/Warning while opening solution: {Message}",e.Diagnostic.ToString());
+            return (object sender, WorkspaceDiagnosticEventArgs e) => logger.LogTrace("Error/Warning while opening solution: {Message}", replaceRegex.Replace(e.Diagnostic.ToString(), ""));
         }
     }
 }

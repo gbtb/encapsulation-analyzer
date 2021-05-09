@@ -21,12 +21,8 @@ namespace EncapsulationAnalyzer.Core
 
         public async Task<IEnumerable<INamedTypeSymbol>> FindProjClassesWhichCanBeInternalAsync(Solution solution, ProjectId projectId,  IProgress<FindInternalClassesProgress> progressSubscriber,  CancellationToken token)
         {
-            progressSubscriber.Report(new FindInternalClassesProgress
-            {
-                Step = FindInternalClassesStep.GetPublicSymbols,
-                CurrentValue = 0
-            });
-            
+            progressSubscriber.Report(new FindInternalClassesProgress(FindInternalClassesStep.GetPublicSymbols, 0));
+
             var proj = solution.GetProject(projectId);
             if (proj == null)
             {
@@ -42,30 +38,15 @@ namespace EncapsulationAnalyzer.Core
 
             var publicSymbols = GetNamedTypeSymbols(compilation, compilation.Assembly,
                 s => s.DeclaredAccessibility == Accessibility.Public).ToList();
-            progressSubscriber.Report(new FindInternalClassesProgress
-            {
-                Step = FindInternalClassesStep.GetPublicSymbols,
-                CurrentValue = 100
-            });
-            progressSubscriber.Report(new FindInternalClassesProgress
-            {
-                Step = FindInternalClassesStep.GetDocsToSearch,
-                CurrentValue = 0
-            });
+            progressSubscriber.Report(new FindInternalClassesProgress(FindInternalClassesStep.GetPublicSymbols, 100));
+            progressSubscriber.Report(new FindInternalClassesProgress(FindInternalClassesStep.GetDocsToSearch, 0));
             
             var docsToSearchIn = GetDocsToSearchIn(solution, proj);
-            progressSubscriber.Report(new FindInternalClassesProgress
-            {
-                Step = FindInternalClassesStep.GetDocsToSearch,
-                CurrentValue = 100
-            });
-            
-            progressSubscriber.Report(new FindInternalClassesProgress
-            {
-                Step = FindInternalClassesStep.LookForReferencesInOtherProjects,
-                CurrentValue = 0,
-                MaxValue = publicSymbols.Count
-            });
+            progressSubscriber.Report(new FindInternalClassesProgress(FindInternalClassesStep.GetDocsToSearch, 100));
+
+            progressSubscriber.Report(
+                new FindInternalClassesProgress(FindInternalClassesStep.LookForReferencesInOtherProjects, 0,
+                    publicSymbols.Count));
             var i = 0;
 
             var resultList = new List<INamedTypeSymbol>();
@@ -73,47 +54,49 @@ namespace EncapsulationAnalyzer.Core
             {
                 if (token.IsCancellationRequested)
                     return Enumerable.Empty<INamedTypeSymbol>();
-                
-                progressSubscriber.Report(new FindInternalClassesProgress
-                {
-                    Step = FindInternalClassesStep.LookForReferencesInOtherProjects,
-                    CurrentValue = ++i,
-                    MaxValue = publicSymbols.Count
-                });
-                
-                var source = CancellationTokenSource.CreateLinkedTokenSource(token);
-                var searchController = new FindReferencesSearchController(_logger, source, proj);
-                try
-                {
-                    var refs = await SymbolFinder.FindReferencesAsync(publicSymbol, solution, searchController, docsToSearchIn, source.Token);
-                    var referencedSymbol = refs?.FirstOrDefault(r => r.Locations.Any());
-                
-                    if (referencedSymbol != null)
-                    {
-                        //due to cancelling token early in searchController, this block is most likely unreachable 
-                        _logger.LogTrace("Symbol {ReferencedSymbol} is used by other project: {Location}",
-                            referencedSymbol.Definition.ToDisplayString(),
-                            referencedSymbol.Locations.FirstOrDefault()
-                        );
-                        continue;
-                    }
-                
-                    _logger.LogTrace("Public symbol {PublicSymbol} can be made internal", publicSymbol.ToDisplayString());
-                    resultList.Add(publicSymbol);
-                }
-                catch (OperationCanceledException e)
-                {
-                    if (e.CancellationToken == source.Token)
-                        continue;
 
-                    throw;
-                }
+                progressSubscriber.Report(new FindInternalClassesProgress(
+                    FindInternalClassesStep.LookForReferencesInOtherProjects, ++i, publicSymbols.Count));
                 
+                await FindPublicReferenceAsync(solution, token, proj, publicSymbol, docsToSearchIn, resultList);
             }
 
             return resultList;
         }
-        
+
+        private async Task FindPublicReferenceAsync(Solution solution, CancellationToken token, Project proj,
+            INamedTypeSymbol publicSymbol, ImmutableHashSet<Document> docsToSearchIn, List<INamedTypeSymbol> resultList)
+        {
+            var source = CancellationTokenSource.CreateLinkedTokenSource(token);
+            var searchController = new FindReferencesProgressSubscriber(_logger, source, proj);
+            try
+            {
+                var refs = await SymbolFinder.FindReferencesAsync(publicSymbol, solution, searchController, docsToSearchIn,
+                    source.Token);
+                var referencedSymbol = refs?.FirstOrDefault(r => r.Locations.Any());
+
+                if (referencedSymbol != null)
+                {
+                    //due to cancelling token early in searchController, this block is most likely unreachable 
+                    _logger.LogTrace("Symbol {ReferencedSymbol} is used by other project: {Location}",
+                        referencedSymbol.Definition.ToDisplayString(),
+                        referencedSymbol.Locations.FirstOrDefault().Location.GetLineSpan()
+                    );
+                    return;
+                }
+
+                _logger.LogTrace("Public symbol {PublicSymbol} can be made internal", publicSymbol.ToDisplayString());
+                resultList.Add(publicSymbol);
+            }
+            catch (OperationCanceledException e)
+            {
+                if (e.CancellationToken == source.Token)
+                    return;
+
+                throw;
+            }
+        }
+
         private static IEnumerable<INamedTypeSymbol> GetNamedTypeSymbols(Compilation compilation,
             IAssemblySymbol compilationAssembly, Predicate<INamedTypeSymbol> searchPredicate)
         {
@@ -126,7 +109,7 @@ namespace EncapsulationAnalyzer.Core
 
                 foreach (var member in @namespace.GetMembers())
                 {
-                    if (member.ContainingAssembly?.Equals(compilationAssembly) == false)
+                    if (member.ContainingAssembly?.Equals(compilationAssembly, SymbolEqualityComparer.IncludeNullability) == false)
                         continue;
                     
                     if (member is INamespaceSymbol memberAsNamespace)

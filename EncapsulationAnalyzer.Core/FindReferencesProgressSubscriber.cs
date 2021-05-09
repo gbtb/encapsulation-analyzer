@@ -5,13 +5,13 @@ using Microsoft.Extensions.Logging;
 
 namespace EncapsulationAnalyzer.Core
 {
-    internal class FindReferencesSearchController : IFindReferencesProgress
+    internal class FindReferencesProgressSubscriber : IFindReferencesProgress
     {
         private readonly ILogger _logger;
         private readonly CancellationTokenSource _source;
         private readonly Project _project;
 
-        internal FindReferencesSearchController(ILogger logger, CancellationTokenSource cancellationTokenSource, Project project)
+        internal FindReferencesProgressSubscriber(ILogger logger, CancellationTokenSource cancellationTokenSource, Project project)
         {
             _logger = logger;
             _source = cancellationTokenSource;
@@ -44,7 +44,7 @@ namespace EncapsulationAnalyzer.Core
             {
                _logger.LogTrace("Symbol {ReferencedSymbol} is used by other project: {Location}",
                    symbol.ToDisplayString(),
-                   location
+                   location.Location.GetLineSpan()
                ); 
                 _source.Cancel();
             }
