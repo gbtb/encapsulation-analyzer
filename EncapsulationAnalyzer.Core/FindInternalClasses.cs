@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.Extensions.Logging;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace EncapsulationAnalyzer.Core
 {
@@ -29,7 +30,13 @@ namespace EncapsulationAnalyzer.Core
                 _logger.LogError("Project {ProjectId} not found in solution", projectId);
                 return Enumerable.Empty<INamedTypeSymbol>();
             }
-            var compilation = await proj.GetCompilationAsync(token);
+            
+            var compilation = await proj.WithCompilationOptions(
+                proj.CompilationOptions
+                    .WithAssemblyIdentityComparer(DesktopAssemblyIdentityComparer.Default)
+                    .WithStrongNameProvider(new DesktopStrongNameProvider()))
+                .GetCompilationAsync(token);
+            
             if (compilation == null)
             {
                 _logger.LogError("Project compilation returned null. Maybe Roslyn has failed to compile?");
@@ -41,7 +48,7 @@ namespace EncapsulationAnalyzer.Core
             progressSubscriber.Report(new FindInternalClassesProgress(FindInternalClassesStep.GetPublicSymbols, 100));
             progressSubscriber.Report(new FindInternalClassesProgress(FindInternalClassesStep.GetDocsToSearch, 0));
             
-            var docsToSearchIn = GetDocsToSearchIn(solution, proj);
+            var docsToSearchIn = GetDocsToSearchIn(solution, proj, compilation);
             progressSubscriber.Report(new FindInternalClassesProgress(FindInternalClassesStep.GetDocsToSearch, 100));
 
             progressSubscriber.Report(
@@ -125,11 +132,38 @@ namespace EncapsulationAnalyzer.Core
             }
         }
         
-        private static ImmutableHashSet<Document> GetDocsToSearchIn(Solution solution, Project proj)
+        private static ImmutableHashSet<Document> GetDocsToSearchIn(Solution solution, Project proj, Compilation compilation)
         {
             var graph = solution.GetProjectDependencyGraph();
             var otherProjects = graph.GetProjectsThatDirectlyDependOnThisProject(proj.Id);
-            return otherProjects.SelectMany(id => solution.GetProject(id)?.Documents).ToImmutableHashSet();
+
+            var friendlyAssemblyNames = compilation.Assembly.GetAttributes()
+                .Where(a => a.AttributeClass.Name == "InternalsVisibleTo" || a.AttributeClass.Name == "InternalsVisibleToAttribute")
+                .Select(a =>
+                {
+                    if (a.ApplicationSyntaxReference?.GetSyntax() is AttributeSyntax s)
+                        return s.ArgumentList?.Arguments.Single().Expression.ToString().Trim('\"');
+
+                    return null;
+                })
+                .Where(v => v != null)
+                .ToImmutableHashSet();
+            
+            var builder = ImmutableHashSet.CreateBuilder<Document>();
+            foreach (var otherProjectId in otherProjects)
+            {
+                var otherProject = solution.GetProject(otherProjectId);
+                if (friendlyAssemblyNames.Contains(otherProject.AssemblyName))
+                    continue;
+
+                foreach (var projectDocument in otherProject.Documents)
+                {
+                    builder.Add(projectDocument);
+                }
+            }
+
+            
+            return builder.ToImmutable();
         }
     }
 }
