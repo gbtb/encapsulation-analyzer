@@ -2,14 +2,14 @@
 {
     public record FindInternalClassesProgress
     {
-        public FindInternalClassesProgress(FindInternalClassesStep step, int? currentValue, int? maxValue = null)
+        public FindInternalClassesProgress(FindInternalTypesStep step, int? currentValue, int? maxValue = null)
         {
             Step = step;
             CurrentValue = currentValue;
             MaxValue = maxValue;
         }
 
-        public FindInternalClassesStep Step { get; }
+        public FindInternalTypesStep Step { get; }
         
         public int? CurrentValue { get; }
         

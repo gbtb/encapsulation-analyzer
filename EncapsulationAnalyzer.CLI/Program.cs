@@ -68,7 +68,7 @@ namespace EncapsulationAnalyzer.CLI
                             {
                                 configuration.LogLevel = logLevel;
                             }))
-                        .AddSingleton<IFindInternalClassesPort, FindInternalClasses>();
+                        .RegisterCoreServices();
                 })).Build();
 
             return await parser.InvokeAsync(args);
@@ -83,7 +83,7 @@ namespace EncapsulationAnalyzer.CLI
                     StartAsync(async progressContext =>
                 {
                     var progressSubscriber = new AnsiConsoleProgressSubscriber(progressContext);
-                    progressSubscriber.Report(new FindInternalClassesProgress(FindInternalClassesStep.LoadSolution, 0));
+                    progressSubscriber.Report(new FindInternalClassesProgress(FindInternalTypesStep.LoadSolution, 0));
                     var logger = host.Services.GetRequiredService<ILogger<Program>>();
                     var workspace = MSBuildWorkspace.Create();
                     workspace.WorkspaceFailed += HandleWorkspaceFailure(logger);
@@ -92,14 +92,14 @@ namespace EncapsulationAnalyzer.CLI
                     var proj = solution.Projects.FirstOrDefault(p => p.Name == projectName);
                     if (proj == null)
                     {
-                        AnsiConsole.Write($"Project not found: {projectName}");
+                        logger.LogError($"Project not found: {projectName}");
                         return -1;
                     }
                     
                     progressSubscriber.Report(
-                        new FindInternalClassesProgress(FindInternalClassesStep.LoadSolution, 100));
+                        new FindInternalClassesProgress(FindInternalTypesStep.LoadSolution, 100));
 
-                    var port = host.Services.GetRequiredService<IFindInternalClassesPort>();
+                    var port = host.Services.GetRequiredService<IFindInternalTypesPort>();
                     var internalSymbols = await port.FindProjClassesWhichCanBeInternalAsync(solution, proj.Id,
                         progressSubscriber,
                         CancellationToken.None);

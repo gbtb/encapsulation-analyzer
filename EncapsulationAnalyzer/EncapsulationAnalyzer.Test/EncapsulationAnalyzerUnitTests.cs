@@ -22,7 +22,7 @@ namespace EncapsulationAnalyzer.Test
         {
             var services = new ServiceCollection();
             services.AddLogging()
-                .AddSingleton<IFindInternalClassesPort, FindInternalClasses>();
+                .AddSingleton<IFindInternalTypesPort, FindInternalTypes>();
             _provider = services.BuildServiceProvider();
         }
         
@@ -70,7 +70,7 @@ namespace EncapsulationAnalyzer.Test
             workspace.AddDocument(uiProject.Id, "UI.cs", sourceText);
 
 
-            var service = _provider.GetRequiredService<IFindInternalClassesPort>();
+            var service = _provider.GetRequiredService<IFindInternalTypesPort>();
             var source = new CancellationTokenSource();
             var internalSymbols = await service.FindProjClassesWhichCanBeInternalAsync(workspace.CurrentSolution, libProject.Id, new Progress<FindInternalClassesProgress>(), source.Token);
             Assert.AreEqual(1, internalSymbols.Count());
@@ -124,7 +124,7 @@ namespace EncapsulationAnalyzer.Test
             workspace.AddDocument(uiProject.Id, "UI.cs", sourceText);
 
 
-            var service = _provider.GetRequiredService<IFindInternalClassesPort>();
+            var service = _provider.GetRequiredService<IFindInternalTypesPort>();
             var source = new CancellationTokenSource();
             var internalSymbols = await service.FindProjClassesWhichCanBeInternalAsync(workspace.CurrentSolution, libProject.Id, new Progress<FindInternalClassesProgress>(), source.Token);
             Assert.AreEqual(2, internalSymbols.Count());

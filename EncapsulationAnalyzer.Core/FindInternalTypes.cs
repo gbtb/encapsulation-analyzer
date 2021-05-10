@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
@@ -9,20 +10,22 @@ using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.Extensions.Logging;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
+
+[assembly: InternalsVisibleTo("EncapsulationAnalyzer.Test")]
 namespace EncapsulationAnalyzer.Core
 {
-    public class FindInternalClasses: IFindInternalClassesPort
+    internal class FindInternalTypes: IFindInternalTypesPort
     {
-        private readonly ILogger<FindInternalClasses> _logger;
+        private readonly ILogger<FindInternalTypes> _logger;
 
-        public FindInternalClasses(ILogger<FindInternalClasses> logger)
+        public FindInternalTypes(ILogger<FindInternalTypes> logger)
         {
             _logger = logger;
         }
 
         public async Task<IEnumerable<INamedTypeSymbol>> FindProjClassesWhichCanBeInternalAsync(Solution solution, ProjectId projectId,  IProgress<FindInternalClassesProgress> progressSubscriber,  CancellationToken token)
         {
-            progressSubscriber.Report(new FindInternalClassesProgress(FindInternalClassesStep.GetPublicSymbols, 0));
+            progressSubscriber.Report(new FindInternalClassesProgress(FindInternalTypesStep.GetPublicSymbols, 0));
 
             var proj = solution.GetProject(projectId);
             if (proj == null)
@@ -45,14 +48,14 @@ namespace EncapsulationAnalyzer.Core
 
             var publicSymbols = GetNamedTypeSymbols(compilation, compilation.Assembly,
                 s => s.DeclaredAccessibility == Accessibility.Public).ToList();
-            progressSubscriber.Report(new FindInternalClassesProgress(FindInternalClassesStep.GetPublicSymbols, 100));
-            progressSubscriber.Report(new FindInternalClassesProgress(FindInternalClassesStep.GetDocsToSearch, 0));
+            progressSubscriber.Report(new FindInternalClassesProgress(FindInternalTypesStep.GetPublicSymbols, 100));
+            progressSubscriber.Report(new FindInternalClassesProgress(FindInternalTypesStep.GetDocsToSearch, 0));
             
             var docsToSearchIn = GetDocsToSearchIn(solution, proj, compilation);
-            progressSubscriber.Report(new FindInternalClassesProgress(FindInternalClassesStep.GetDocsToSearch, 100));
+            progressSubscriber.Report(new FindInternalClassesProgress(FindInternalTypesStep.GetDocsToSearch, 100));
 
             progressSubscriber.Report(
-                new FindInternalClassesProgress(FindInternalClassesStep.LookForReferencesInOtherProjects, 0,
+                new FindInternalClassesProgress(FindInternalTypesStep.LookForReferencesInOtherProjects, 0,
                     publicSymbols.Count));
             var i = 0;
 
@@ -63,7 +66,7 @@ namespace EncapsulationAnalyzer.Core
                     return Enumerable.Empty<INamedTypeSymbol>();
 
                 progressSubscriber.Report(new FindInternalClassesProgress(
-                    FindInternalClassesStep.LookForReferencesInOtherProjects, ++i, publicSymbols.Count));
+                    FindInternalTypesStep.LookForReferencesInOtherProjects, ++i, publicSymbols.Count));
                 
                 await FindPublicReferenceAsync(solution, token, proj, publicSymbol, docsToSearchIn, resultList);
             }

@@ -1,6 +1,6 @@
 ﻿namespace EncapsulationAnalyzer.Core
 {
-    public enum FindInternalClassesStep
+    public enum FindInternalTypesStep
     {
         LoadSolution,
         GetPublicSymbols,

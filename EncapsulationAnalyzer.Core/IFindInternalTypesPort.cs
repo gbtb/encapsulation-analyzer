@@ -6,7 +6,7 @@ using Microsoft.CodeAnalysis;
 
 namespace EncapsulationAnalyzer.Core
 {
-    public interface IFindInternalClassesPort
+    public interface IFindInternalTypesPort
     {
         Task<IEnumerable<INamedTypeSymbol>> FindProjClassesWhichCanBeInternalAsync(Solution solution, ProjectId projectId, 
             IProgress<FindInternalClassesProgress> progressSubscriber, CancellationToken token);

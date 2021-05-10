@@ -9,12 +9,12 @@ namespace EncapsulationAnalyzer.CLI
     internal class AnsiConsoleProgressSubscriber : IProgress<FindInternalClassesProgress>, IProgress<ProjectLoadProgress>
     {
         private readonly ProgressContext _progressContext;
-        private readonly ConcurrentDictionary<FindInternalClassesStep, ProgressTask> _tasks;
+        private readonly ConcurrentDictionary<FindInternalTypesStep, ProgressTask> _tasks;
 
         public AnsiConsoleProgressSubscriber(ProgressContext progressContext)
         {
             _progressContext = progressContext;
-            _tasks = new ConcurrentDictionary<FindInternalClassesStep, ProgressTask>();
+            _tasks = new ConcurrentDictionary<FindInternalTypesStep, ProgressTask>();
         }
         
         public void Report(FindInternalClassesProgress value)
@@ -33,9 +33,9 @@ namespace EncapsulationAnalyzer.CLI
 
         public void Report(ProjectLoadProgress value)
         {
-            var task = _tasks.GetOrAdd(FindInternalClassesStep.LoadSolution, _ =>
+            var task = _tasks.GetOrAdd(FindInternalTypesStep.LoadSolution, _ =>
             {
-                var t = _progressContext.AddTask(FindInternalClassesStep.LoadSolution.ToString());
+                var t = _progressContext.AddTask(FindInternalTypesStep.LoadSolution.ToString());
                 t.StartTask();
                 return t;
             });
