@@ -51,6 +51,15 @@ namespace EncapsulationAnalyzer.CLI
             {
                 Handler = CommandHandler.Create<IHost, FileInfo, string>(AnalyzeCommand)
             };
+
+            var refactorCommand =
+                new Command("refactor", "Analyze project from a solution then make all found types internal")
+                {
+                    Handler = CommandHandler.Create<IHost, FileInfo, string>(RefactorCommand)
+                };
+            
+            refactorCommand.AddArgument(new Argument<FileInfo>("solutionPath"));
+            refactorCommand.AddArgument(new Argument<string>("projectName"));
             
             analyzeCommand.AddArgument(new Argument<FileInfo>("solutionPath"));
             analyzeCommand.AddArgument(new Argument<string>("projectName"));
@@ -58,6 +67,7 @@ namespace EncapsulationAnalyzer.CLI
                 .UseHelp()
                 .UseVersionOption()
                 .AddCommand(analyzeCommand)
+                .AddCommand(refactorCommand)
                 .UseHost(h => h.ConfigureServices((context, services) =>
                 {
                     services
@@ -74,6 +84,36 @@ namespace EncapsulationAnalyzer.CLI
             return await parser.InvokeAsync(args);
         }
 
+        private static async Task<int> RefactorCommand(IHost host, FileInfo solutionPath, string projectName)
+        {
+            return await AnsiConsole.Progress().AutoClear(false)
+                .Columns(new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(),
+                    new ElapsedTimeColumn()).StartAsync(async progressContext =>
+                {
+                    var logger = host.Services.GetRequiredService<ILogger<Program>>();
+                    var progressSubscriber = new AnsiConsoleProgressSubscriber(progressContext);
+                    
+                    var workspace = CreateWorkspace(progressSubscriber, logger);
+
+                    var (solution, proj) = await OpenSolutionAndProject(solutionPath, projectName, workspace, progressSubscriber, logger);
+                    if (proj == null)
+                        return -1;
+                    
+                    progressSubscriber.Report(
+                        new FindInternalClassesProgress(FindInternalTypesStep.LoadSolution, 100));
+
+                    var port = host.Services.GetRequiredService<IFindInternalTypesPort>();
+                    var internalSymbols = await port.FindProjClassesWhichCanBeInternalAsync(solution, proj.Id,
+                        progressSubscriber,
+                        CancellationToken.None);
+                    AnsiConsole.WriteLine($"Found {internalSymbols.Count()} public types which can be made internal");
+
+                    var fix = host.Services.GetRequiredService<IPublicToInternalFixPort>();
+                    var newSolution = await fix.MakePublicTypesInternal(solution, internalSymbols);
+                    return workspace.TryApplyChanges(newSolution) ? 0 : -1;
+                });
+        }
+
         private static async Task<int> AnalyzeCommand(IHost host, FileInfo solutionPath, string projectName)
         {
             try
@@ -82,20 +122,15 @@ namespace EncapsulationAnalyzer.CLI
                     .Columns(new TaskDescriptionColumn(), new ProgressBarColumn(), new PercentageColumn(), new ElapsedTimeColumn()).
                     StartAsync(async progressContext =>
                 {
-                    var progressSubscriber = new AnsiConsoleProgressSubscriber(progressContext);
-                    progressSubscriber.Report(new FindInternalClassesProgress(FindInternalTypesStep.LoadSolution, 0));
                     var logger = host.Services.GetRequiredService<ILogger<Program>>();
-                    var workspace = MSBuildWorkspace.Create();
-                    workspace.WorkspaceFailed += HandleWorkspaceFailure(logger);
-                
-                    var solution = await workspace.OpenSolutionAsync(solutionPath.ToString(), progressSubscriber);
-                    var proj = solution.Projects.FirstOrDefault(p => p.Name == projectName);
-                    if (proj == null)
-                    {
-                        logger.LogError($"Project not found: {projectName}");
-                        return -1;
-                    }
+                    var progressSubscriber = new AnsiConsoleProgressSubscriber(progressContext);
                     
+                    var workspace = CreateWorkspace(progressSubscriber, logger);
+
+                    var (solution, proj) = await OpenSolutionAndProject(solutionPath, projectName, workspace, progressSubscriber, logger);
+                    if (proj == null)
+                        return -1;
+
                     progressSubscriber.Report(
                         new FindInternalClassesProgress(FindInternalTypesStep.LoadSolution, 100));
 
@@ -125,6 +160,28 @@ namespace EncapsulationAnalyzer.CLI
                 AnsiConsole.WriteException(e);
                 return -1;
             }
+        }
+
+        private static async Task<(Solution solution, Project? proj)> OpenSolutionAndProject(FileInfo solutionPath, string projectName, MSBuildWorkspace workspace,
+            AnsiConsoleProgressSubscriber progressSubscriber, ILogger<Program> logger)
+        {
+            var solution = await workspace.OpenSolutionAsync(solutionPath.ToString(), progressSubscriber);
+            var proj = solution.Projects.FirstOrDefault(p => p.Name == projectName);
+            if (proj == null)
+            {
+                logger.LogError($"Project not found: {projectName}");
+                return (solution, proj);
+            }
+
+            return (solution, proj);
+        }
+
+        private static MSBuildWorkspace CreateWorkspace(AnsiConsoleProgressSubscriber progressSubscriber, ILogger<Program> logger)
+        {
+            progressSubscriber.Report(new FindInternalClassesProgress(FindInternalTypesStep.LoadSolution, 0));
+            var workspace = MSBuildWorkspace.Create();
+            workspace.WorkspaceFailed += HandleWorkspaceFailure(logger);
+            return workspace;
         }
 
         //regex to replace chars which can be interpreted as Spectre.Console markup

@@ -26,25 +26,29 @@ namespace EncapsulationAnalyzer.Core
 
             foreach (var group in groupByDoc)
             {
-                var doc = group.Key;
-                if (doc == null)
+                var oldSolutionDoc = group.Key;
+                if (oldSolutionDoc == null)
                 {
                     _logger.LogError("Failed to find docs for some symbols location: {Symbols}", "TODO");
                     continue;
                 }
                 
-                var root = await doc.GetSyntaxRootAsync();
-                if (root == null)
+                var oldDocRoot = await oldSolutionDoc.GetSyntaxRootAsync();
+                if (oldDocRoot == null)
                 {
-                    _logger.LogError("Failed to get syntax root of document: {Doc}", doc.Name);
+                    _logger.LogError("Failed to get syntax root of document: {Doc}", oldSolutionDoc.Name);
                     continue;
                 }
                 
-                var declarationNodes = group.Select(g => root.FindNode(g.location.SourceSpan));
+                var declarationNodes = group.Select(g => oldDocRoot.FindNode(g.location.SourceSpan));
                 var rewriter = new AccesibilityRewriter(declarationNodes);
-                var newRoot = rewriter.Visit(root);
 
-                solution = doc.WithSyntaxRoot(newRoot).Project.Solution;
+                var newSolutionDoc = solution.GetDocument(oldSolutionDoc.Id);
+                var newSolutionRoot = await newSolutionDoc.GetSyntaxRootAsync();
+                
+                var newRoot = rewriter.Visit(newSolutionRoot);
+
+                solution = newSolutionDoc.WithSyntaxRoot(newRoot).Project.Solution;
             }
 
             return solution;
