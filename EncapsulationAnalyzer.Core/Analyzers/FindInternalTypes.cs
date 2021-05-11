@@ -6,6 +6,7 @@ using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.Extensions.Logging;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -60,6 +61,7 @@ namespace EncapsulationAnalyzer.Core
             var i = 0;
 
             var resultList = new List<INamedTypeSymbol>();
+            var thisProjectDocs = proj.Documents.ToImmutableHashSet();
             foreach (var publicSymbol in publicSymbols)
             {
                 if (token.IsCancellationRequested)
@@ -68,14 +70,41 @@ namespace EncapsulationAnalyzer.Core
                 progressSubscriber.Report(new FindInternalClassesProgress(
                     FindInternalTypesStep.LookForReferencesInOtherProjects, ++i, publicSymbols.Count));
                 
-                await FindPublicReferenceAsync(solution, token, proj, publicSymbol, docsToSearchIn, resultList);
+                var hasExternalReference = await FindExternalReferenceAsync(solution, token, proj, publicSymbol, docsToSearchIn);
+                if (hasExternalReference)
+                    continue;
+                
+                //todo: static extension
+                
+                var refs = await SymbolFinder.FindReferencesAsync(publicSymbol, solution, null, thisProjectDocs,
+                    CancellationToken.None);
+                foreach (var referencedSymbol in refs.Where(r => r.Definition is INamedTypeSymbol && r.Locations.Any()))
+                {
+                    foreach (var referenceLocation in referencedSymbol.Locations.Where(l => !l.IsCandidateLocation))
+                    {
+                        var tree = referenceLocation.Location.SourceTree;
+                        if (tree == null)
+                            continue;
+
+                        var walker = new ClimbSyntaxTreeWalker();
+                        walker.Visit(tree.GetRoot().FindNode(referenceLocation.Location.SourceSpan));
+                        if (walker.Result)
+                        {
+                            goto A;
+                        }
+                    }
+                }
+                
+                resultList.Add(publicSymbol);
+                
+                A: continue;
             }
 
             return resultList;
         }
 
-        private async Task FindPublicReferenceAsync(Solution solution, CancellationToken token, Project proj,
-            INamedTypeSymbol publicSymbol, ImmutableHashSet<Document> docsToSearchIn, List<INamedTypeSymbol> resultList)
+        private async Task<bool> FindExternalReferenceAsync(Solution solution, CancellationToken token, Project proj,
+            INamedTypeSymbol publicSymbol, ImmutableHashSet<Document> docsToSearchIn)
         {
             var source = CancellationTokenSource.CreateLinkedTokenSource(token);
             var searchController = new FindReferencesProgressSubscriber(_logger, source, proj);
@@ -83,7 +112,7 @@ namespace EncapsulationAnalyzer.Core
             {
                 var refs = await SymbolFinder.FindReferencesAsync(publicSymbol, solution, searchController, docsToSearchIn,
                     source.Token);
-                var referencedSymbol = refs?.FirstOrDefault(r => r.Locations.Any());
+                var referencedSymbol = refs?.FirstOrDefault(r => r.Locations.Any(l => !l.IsCandidateLocation));
 
                 if (referencedSymbol != null)
                 {
@@ -92,16 +121,16 @@ namespace EncapsulationAnalyzer.Core
                         referencedSymbol.Definition.ToDisplayString(),
                         referencedSymbol.Locations.FirstOrDefault().Location.GetLineSpan()
                     );
-                    return;
+                    return true;
                 }
 
                 _logger.LogTrace("Public symbol {PublicSymbol} can be made internal", publicSymbol.ToDisplayString());
-                resultList.Add(publicSymbol);
+                return false;
             }
             catch (OperationCanceledException e)
             {
                 if (e.CancellationToken == source.Token)
-                    return;
+                    return true;
 
                 throw;
             }
