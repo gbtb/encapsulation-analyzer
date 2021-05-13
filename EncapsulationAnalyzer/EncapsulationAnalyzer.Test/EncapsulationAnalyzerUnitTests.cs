@@ -241,5 +241,109 @@ namespace EncapsulationAnalyzer.Test
             Assert.AreEqual(1, internalSymbols.Count());
         }
         
+        [Test]
+        public async Task TwoSimpleProjectsTwoSimpleClasses_ShouldCheckExtensionMethodsReferences()
+        {
+            var workspace = new AdhocWorkspace();
+            var solution = workspace.AddSolution(SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default));
+            var libProject = workspace.AddProject(ProjectInfo.Create(ProjectId.CreateNewId(), VersionStamp.Default, "Lib", "Lib", LanguageNames.CSharp));
+
+            var sourceText = SourceText.From(@"
+                using System;
+                
+                namespace Lib 
+                {
+                    public static class BarExtensions 
+                    {
+                        public static void Ext(this Bar bar)
+                        {
+                        }
+                    }
+
+                    public class Bar 
+                    {
+                       public int Prop { get; set; }
+                    }
+                }
+            ");
+            workspace.AddDocument(libProject.Id, "Lib.cs", sourceText);
+            var uiProject = workspace.AddProject(ProjectInfo.Create(ProjectId.CreateNewId(), VersionStamp.Default, "UI", "UI", LanguageNames.CSharp, 
+                    projectReferences: new [] {new ProjectReference(libProject.Id)}));
+            sourceText = SourceText.From(@"
+                using System;
+                using Lib;
+
+                namespace UI
+                {
+                    public static class Program 
+                    {
+                        public static void Main(string[] args)
+                        {
+                            var bar = new Bar();
+                            bar.Ext();
+                        }
+                    }
+                }
+            ");
+            workspace.AddDocument(uiProject.Id, "UI.cs", sourceText);
+
+
+            var service = _provider.GetRequiredService<IFindInternalTypesPort>();
+            var source = new CancellationTokenSource();
+            var internalSymbols = await service.FindProjClassesWhichCanBeInternalAsync(workspace.CurrentSolution, libProject.Id, new Progress<FindInternalClassesProgress>(), source.Token);
+            Assert.AreEqual(0, internalSymbols.Count());
+        }
+        
+        [Test]
+        public async Task TwoSimpleProjectsTwoSimpleClasses_ShouldCheckForStaticProperties()
+        {
+            var workspace = new AdhocWorkspace();
+            var solution = workspace.AddSolution(SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default));
+            var libProject = workspace.AddProject(ProjectInfo.Create(ProjectId.CreateNewId(), VersionStamp.Default, "Lib", "Lib", LanguageNames.CSharp));
+
+            var sourceText = SourceText.From(@"
+                using System;
+                
+                namespace Lib 
+                {
+                    public static class Foo 
+                    {
+                        public int Prop { get; set; }
+                    }
+
+                    public class Bar 
+                    {
+                       public int Prop { get; set; }
+                    }
+                }
+            ");
+            workspace.AddDocument(libProject.Id, "Lib.cs", sourceText);
+            var uiProject = workspace.AddProject(ProjectInfo.Create(ProjectId.CreateNewId(), VersionStamp.Default, "UI", "UI", LanguageNames.CSharp, 
+                    projectReferences: new [] {new ProjectReference(libProject.Id)}));
+            sourceText = SourceText.From(@"
+                using System;
+                using Lib;
+
+                namespace UI
+                {
+                    public static class Program 
+                    {
+                        public static void Main(string[] args)
+                        {
+                            var bar = new Bar();
+                            bar.Prop = Foo.Prop;
+                        }
+                    }
+                }
+            ");
+            workspace.AddDocument(uiProject.Id, "UI.cs", sourceText);
+
+
+            var service = _provider.GetRequiredService<IFindInternalTypesPort>();
+            var source = new CancellationTokenSource();
+            var internalSymbols = await service.FindProjClassesWhichCanBeInternalAsync(workspace.CurrentSolution, libProject.Id, new Progress<FindInternalClassesProgress>(), source.Token);
+            Assert.AreEqual(0, internalSymbols.Count());
+        }
+        
     }
 }
