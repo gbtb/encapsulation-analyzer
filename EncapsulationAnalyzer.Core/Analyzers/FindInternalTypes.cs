@@ -73,8 +73,15 @@ namespace EncapsulationAnalyzer.Core
                 var hasExternalReference = await FindExternalReferenceAsync(solution, token, proj, publicSymbol, docsToSearchIn);
                 if (hasExternalReference)
                     continue;
-                
-                //todo: static extension
+
+                if (publicSymbol.MightContainExtensionMethods)
+                {
+                    hasExternalReference =
+                        await FindExtensionMethodsReferencesAsync(solution, token, proj, publicSymbol, docsToSearchIn);
+                   
+                    if (hasExternalReference)
+                        continue;
+                }
                 
                 var refs = await SymbolFinder.FindReferencesAsync(publicSymbol, solution, null, thisProjectDocs,
                     CancellationToken.None);
@@ -103,8 +110,25 @@ namespace EncapsulationAnalyzer.Core
             return resultList;
         }
 
+        private async Task<bool> FindExtensionMethodsReferencesAsync(Solution solution, CancellationToken token, Project proj, INamedTypeSymbol publicSymbol, ImmutableHashSet<Document> docsToSearchIn)
+        {
+            var extensionMethods = publicSymbol.GetMembers()
+                .OfType<IMethodSymbol>()
+                .Where(m => m.IsExtensionMethod && m.DeclaredAccessibility == Accessibility.Public);
+
+            foreach (var methodSymbol in extensionMethods)
+            {
+                var hasExternalReference =
+                    await FindExternalReferenceAsync(solution, token, proj, methodSymbol, docsToSearchIn);
+                if (hasExternalReference)
+                    return true;
+            }
+
+            return false;
+        }
+
         private async Task<bool> FindExternalReferenceAsync(Solution solution, CancellationToken token, Project proj,
-            INamedTypeSymbol publicSymbol, ImmutableHashSet<Document> docsToSearchIn)
+            ISymbol publicSymbol, ImmutableHashSet<Document> docsToSearchIn)
         {
             var source = CancellationTokenSource.CreateLinkedTokenSource(token);
             var searchController = new FindReferencesProgressSubscriber(_logger, source, proj);
@@ -112,7 +136,7 @@ namespace EncapsulationAnalyzer.Core
             {
                 var refs = await SymbolFinder.FindReferencesAsync(publicSymbol, solution, searchController, docsToSearchIn,
                     source.Token);
-                var referencedSymbol = refs?.FirstOrDefault(r => r.Locations.Any(l => !l.IsCandidateLocation));
+                var referencedSymbol = refs?.FirstOrDefault(r => r.Locations.Any());
 
                 if (referencedSymbol != null)
                 {
