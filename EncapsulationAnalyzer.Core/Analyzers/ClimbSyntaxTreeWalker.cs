@@ -1,11 +1,14 @@
-﻿using System;
-using Microsoft.CodeAnalysis;
+﻿using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace EncapsulationAnalyzer.Core
+namespace EncapsulationAnalyzer.Core.Analyzers
 {
 
+    /// <summary>
+    /// Syntax walker impl used to ascend syntax tree. From type references inside type declaration to type declaration itself.
+    /// Aimed to find public members which uses "probably-internal" other type
+    /// </summary>
     public class ClimbSyntaxTreeWalker: CSharpSyntaxWalker
     {
         private bool _isPublicMember;
@@ -37,7 +40,10 @@ namespace EncapsulationAnalyzer.Core
         public override void VisitConstructorDeclaration(ConstructorDeclarationSyntax node)
         {
             if (node.Modifiers.Any(SyntaxKind.PublicKeyword))
+            {
+                _isPublicMember = true;
                 Visit(node.Parent);
+            }
         }
 
         public override void VisitMethodDeclaration(MethodDeclarationSyntax node)
