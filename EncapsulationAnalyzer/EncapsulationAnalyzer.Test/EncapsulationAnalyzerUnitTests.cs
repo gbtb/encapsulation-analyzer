@@ -78,7 +78,7 @@ namespace EncapsulationAnalyzer.Test
         }
         
         [Test]
-        public async Task TwoSimpleProjectsTwoSimpleClasses_InternalsVisibleToTest()
+        public async Task InternalsVisibleToTest()
         {
             var workspace = new AdhocWorkspace();
             var solution = workspace.AddSolution(SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default));
@@ -135,7 +135,7 @@ namespace EncapsulationAnalyzer.Test
         }
         
         [Test]
-        public async Task TwoSimpleProjectsTwoSimpleClasses_ShouldCheckForPublicPropertiesInOtherTypes()
+        public async Task ShouldCheckForPublicPropertiesInOtherTypes()
         {
             var workspace = new AdhocWorkspace();
             var solution = workspace.AddSolution(SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default));
@@ -185,7 +185,7 @@ namespace EncapsulationAnalyzer.Test
         }
         
         [Test]
-        public async Task TwoSimpleProjectsTwoSimpleClasses_ShouldCheckForInterfaceMembers()
+        public async Task ShouldCheckForInterfaceMembers()
         {
             var workspace = new AdhocWorkspace();
             var solution = workspace.AddSolution(SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default));
@@ -242,7 +242,7 @@ namespace EncapsulationAnalyzer.Test
         }
         
         [Test]
-        public async Task TwoSimpleProjectsTwoSimpleClasses_ShouldCheckExtensionMethodsReferences()
+        public async Task ShouldCheckExtensionMethodsReferences()
         {
             var workspace = new AdhocWorkspace();
             var solution = workspace.AddSolution(SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default));
@@ -295,7 +295,7 @@ namespace EncapsulationAnalyzer.Test
         }
         
         [Test]
-        public async Task TwoSimpleProjectsTwoSimpleClasses_ShouldCheckForStaticProperties()
+        public async Task ShouldCheckForStaticProperties()
         {
             var workspace = new AdhocWorkspace();
             var solution = workspace.AddSolution(SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default));
@@ -345,5 +345,104 @@ namespace EncapsulationAnalyzer.Test
             Assert.AreEqual(0, internalSymbols.Count());
         }
         
+        
+        [Test]
+        public async Task ShouldSkipClassIfItIsConstructorArgument()
+        {
+            var workspace = new AdhocWorkspace();
+            var solution = workspace.AddSolution(SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default));
+            var libProject = workspace.AddProject(ProjectInfo.Create(ProjectId.CreateNewId(), VersionStamp.Default, "Lib", "Lib", LanguageNames.CSharp));
+
+            var sourceText = SourceText.From(@"
+                using System;
+                
+                namespace Lib 
+                {
+                    public class Foo 
+                    {
+                        public Foo(Bar bar)
+                        {
+                        }
+                    }
+
+                    public class Bar 
+                    {
+                       public int Prop { get; set; }
+                    }
+                }
+            ");
+            workspace.AddDocument(libProject.Id, "Lib.cs", sourceText);
+            var uiProject = workspace.AddProject(ProjectInfo.Create(ProjectId.CreateNewId(), VersionStamp.Default, "UI", "UI", LanguageNames.CSharp, 
+                    projectReferences: new [] {new ProjectReference(libProject.Id)}));
+            sourceText = SourceText.From(@"
+                using System;
+                using Lib;
+
+                namespace UI
+                {
+                    public static class Program 
+                    {
+                        public static void Main(string[] args)
+                        {
+                            var foo = new Foo(null);
+                        }
+                    }
+                }
+            ");
+            workspace.AddDocument(uiProject.Id, "UI.cs", sourceText);
+
+
+            var service = _provider.GetRequiredService<IFindInternalTypesPort>();
+            var source = new CancellationTokenSource();
+            var internalSymbols = await service.FindProjClassesWhichCanBeInternalAsync(workspace.CurrentSolution, libProject.Id, new Progress<FindInternalClassesProgress>(), source.Token);
+            Assert.AreEqual(0, internalSymbols.Count());
+        }
+        
+        [Test]
+        public async Task ShouldSkipEnumIfItIsMethodArgument()
+        {
+            var workspace = new AdhocWorkspace();
+            var solution = workspace.AddSolution(SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default));
+            var libProject = workspace.AddProject(ProjectInfo.Create(ProjectId.CreateNewId(), VersionStamp.Default, "Lib", "Lib", LanguageNames.CSharp));
+
+            var sourceText = SourceText.From(@"
+                using System;
+                
+                namespace Lib 
+                {
+                    public class Foo 
+                    {
+                        public abstract void Foo(Bar bar){}
+                    }
+
+                    public enum Bar { One, Two }
+                }
+            ");
+            workspace.AddDocument(libProject.Id, "Lib.cs", sourceText);
+            var uiProject = workspace.AddProject(ProjectInfo.Create(ProjectId.CreateNewId(), VersionStamp.Default, "UI", "UI", LanguageNames.CSharp, 
+                    projectReferences: new [] {new ProjectReference(libProject.Id)}));
+            sourceText = SourceText.From(@"
+                using System;
+                using Lib;
+
+                namespace UI
+                {
+                    public static class Program 
+                    {
+                        public static void Main(string[] args)
+                        {
+                            var foo = new Foo();
+                        }
+                    }
+                }
+            ");
+            workspace.AddDocument(uiProject.Id, "UI.cs", sourceText);
+
+
+            var service = _provider.GetRequiredService<IFindInternalTypesPort>();
+            var source = new CancellationTokenSource();
+            var internalSymbols = await service.FindProjClassesWhichCanBeInternalAsync(workspace.CurrentSolution, libProject.Id, new Progress<FindInternalClassesProgress>(), source.Token);
+            Assert.AreEqual(0, internalSymbols.Count());
+        }
     }
 }
