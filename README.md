@@ -1,6 +1,7 @@
 # Roslyn Encapsulation Analyzer
 
-This project uses Roslyn SymbolFinder to find public types of a project which can be made internal. And it also provides simple refactoring, which makes such types internal.
+This project uses Roslyn SymbolFinder to find public types in a project, which can be made internal. And it also provides simple refactoring, which indeed makes such types internal.
+It is intended to help with encapsulating as much as possible of an inner (non-ui, library, business-logic) layers of your app.
 
 ## Motivation
 
@@ -9,7 +10,7 @@ It's probably not a big deal until you start to care about encapsulation and sep
 
 ## How to use it
 
-Currently this project has only a CLI interface. To analyze project run
+Currently this project has only a simple CLI interface. To analyze project run
 
 `EncapsulationAnalyzer.CLI.exe analyze [path-to-sln-file] [project-name]`
 
@@ -20,6 +21,9 @@ To automatically refactor found types, run
 `EncapsulationAnalyzer.CLI.exe refactor [path-to-sln-file] [project-name]`
 
 ## Limitations and important details
+
+* This tool does not have a reference cycle-detection mechanism. Therefore public types which cross-reference each other through properties or method arguments will not be detected as unnecessary public.
+* This tool also does a single pass of reference search. Therefore it may require multiple passes of refactoring to hide all possible types in a project.
 
 ## TODO-list
 
