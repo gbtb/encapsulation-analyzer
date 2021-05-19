@@ -1,4 +1,6 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using EncapsulationAnalyzer.Core.Analyzers;
+using EncapsulationAnalyzer.Core.Fixes;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace EncapsulationAnalyzer.Core
 {

@@ -3,6 +3,11 @@
     <PropertyGroup>
         <OutputType>Exe</OutputType>
         <TargetFramework>net5.0</TargetFramework>
+
+        <PackAsTool>true</PackAsTool>
+        <ToolCommandName>encapsulation-analyzer</ToolCommandName>
+        <PackageOutputPath>./nupkg</PackageOutputPath>
+        <Description>CLI tool based on Roslyn SymbolFinder to find public types of a project which can be made internal.</Description>
     </PropertyGroup>
 
     <ItemGroup>

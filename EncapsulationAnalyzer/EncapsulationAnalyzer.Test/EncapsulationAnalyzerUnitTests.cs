@@ -3,6 +3,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using EncapsulationAnalyzer.Core;
+using EncapsulationAnalyzer.Core.Analyzers;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.DependencyInjection;

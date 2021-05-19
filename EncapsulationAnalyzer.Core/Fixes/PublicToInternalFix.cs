@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 
-namespace EncapsulationAnalyzer.Core
+namespace EncapsulationAnalyzer.Core.Fixes
 {
     public class PublicToInternalFix: IPublicToInternalFixPort
     {

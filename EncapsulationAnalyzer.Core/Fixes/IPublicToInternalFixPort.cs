@@ -2,7 +2,7 @@
 using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 
-namespace EncapsulationAnalyzer.Core
+namespace EncapsulationAnalyzer.Core.Fixes
 {
     public interface IPublicToInternalFixPort
     {

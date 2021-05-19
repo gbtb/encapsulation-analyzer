@@ -1,4 +1,4 @@
-﻿namespace EncapsulationAnalyzer.Core
+﻿namespace EncapsulationAnalyzer.Core.Analyzers
 {
     public record FindInternalClassesProgress
     {
@@ -15,10 +15,7 @@
         
         public int? MaxValue { get; }
     }
-}
 
-namespace System.Runtime.CompilerServices
-{
-    //record bugfix lol
+//record bugfix lol
     internal static class IsExternalInit {}
 }

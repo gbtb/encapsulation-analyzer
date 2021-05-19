@@ -3,7 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.Extensions.Logging;
 
-namespace EncapsulationAnalyzer.Core
+namespace EncapsulationAnalyzer.Core.Analyzers
 {
     internal class FindReferencesProgressSubscriber : IFindReferencesProgress
     {
