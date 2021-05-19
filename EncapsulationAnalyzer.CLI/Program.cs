@@ -13,6 +13,8 @@ using System.CommandLine.Parsing;
 using System.Text.RegularExpressions;
 using System.Threading;
 using EncapsulationAnalyzer.Core;
+using EncapsulationAnalyzer.Core.Analyzers;
+using EncapsulationAnalyzer.Core.Fixes;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;

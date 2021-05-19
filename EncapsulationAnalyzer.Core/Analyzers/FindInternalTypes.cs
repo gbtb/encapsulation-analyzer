@@ -5,17 +5,17 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using EncapsulationAnalyzer.Core.Analyzers;
 using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.FindSymbols;
 using Microsoft.Extensions.Logging;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
-
 
 [assembly: InternalsVisibleTo("EncapsulationAnalyzer.Test")]
-namespace EncapsulationAnalyzer.Core
+namespace EncapsulationAnalyzer.Core.Analyzers
 {
+    /// <summary>
+    /// Implementation of service for searching for public types which can be made internal
+    /// </summary>
     internal class FindInternalTypes: IFindInternalTypesPort
     {
         private readonly ILogger<FindInternalTypes> _logger;

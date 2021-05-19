@@ -1,4 +1,4 @@
-﻿namespace EncapsulationAnalyzer.Core
+﻿namespace EncapsulationAnalyzer.Core.Analyzers
 {
     public enum FindInternalTypesStep
     {

@@ -1,11 +1,15 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using EncapsulationAnalyzer.Core;
+using EncapsulationAnalyzer.Core.Analyzers;
 using Microsoft.CodeAnalysis.MSBuild;
 using Spectre.Console;
 
 namespace EncapsulationAnalyzer.CLI
 {
+    /// <summary>
+    /// Subscribes to progress of search operation and project load progress, and reports it to Spectre.Console
+    /// </summary>
     internal class AnsiConsoleProgressSubscriber : IProgress<FindInternalClassesProgress>, IProgress<ProjectLoadProgress>
     {
         private readonly ProgressContext _progressContext;
@@ -40,7 +44,7 @@ namespace EncapsulationAnalyzer.CLI
                 return t;
             });
             
-            task.Increment(1);
+            task.Increment(1);//we dont know in advance amount of steps, so just incrementing counter. Hope it wont exceed 100
         }
     }
 }

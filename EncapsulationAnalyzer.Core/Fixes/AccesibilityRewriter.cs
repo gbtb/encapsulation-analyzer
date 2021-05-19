@@ -4,7 +4,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
-namespace EncapsulationAnalyzer.Core
+namespace EncapsulationAnalyzer.Core.Fixes
 {
     internal class AccesibilityRewriter : CSharpSyntaxRewriter
     {
