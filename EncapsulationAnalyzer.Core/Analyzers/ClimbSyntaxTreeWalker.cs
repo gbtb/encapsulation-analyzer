@@ -9,7 +9,7 @@ namespace EncapsulationAnalyzer.Core.Analyzers
     /// Syntax walker impl used to ascend syntax tree. From type references inside type declaration to type declaration itself.
     /// Aimed to find public members which uses "probably-internal" other type
     /// </summary>
-    public class ClimbSyntaxTreeWalker: CSharpSyntaxWalker
+    internal class ClimbSyntaxTreeWalker: CSharpSyntaxWalker
     {
         private bool _isPublicMember;
         public bool Result { get; private set; }
