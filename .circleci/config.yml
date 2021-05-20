@@ -19,7 +19,7 @@ jobs:
           working_directory: ~/EncapsulationAnalyzer.Test
           name: Run tests
           command: |
-            dotnet test
+            dotnet test EncapsulationAnalyzer.Test.csproj
             
 
 workflows:
