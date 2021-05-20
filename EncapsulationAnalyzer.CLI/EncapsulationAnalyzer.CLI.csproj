@@ -8,6 +8,16 @@
         <ToolCommandName>encapsulation-analyzer</ToolCommandName>
         <PackageOutputPath>./nupkg</PackageOutputPath>
         <Description>CLI tool based on Roslyn SymbolFinder to find public types of a project which can be made internal.</Description>
+
+        <PackageId>EncapsulationAnalyzer</PackageId>
+        <PackageProjectUrl>https://github.com/gbtb/encapsulation-analyzer</PackageProjectUrl>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <RepositoryUrl>https://github.com/gbtb/encapsulation-analyzer</RepositoryUrl>
+        <Copyright>Copyright (c) gbtb 2021</Copyright>
+        <RepositoryType>git</RepositoryType>
+        <Version>1.0.0</Version>
+        <Authors>gbtb</Authors>
+        <PackageTags>roslyn analyzer refactoring internal encapsulation</PackageTags>
     </PropertyGroup>
 
     <ItemGroup>
