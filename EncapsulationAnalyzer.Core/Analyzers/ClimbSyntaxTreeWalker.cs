@@ -12,11 +12,13 @@ namespace EncapsulationAnalyzer.Core.Analyzers
     internal class ClimbSyntaxTreeWalker: CSharpSyntaxWalker
     {
         private bool _isPublicMember;
-        public bool Result { get; private set; }
+        public TypeDeclarationSyntax Result { get; private set; }
+
+        private bool _stop;
 
         public override void DefaultVisit(SyntaxNode node)
         {
-            if (node != null)
+            if (node != null && !_stop)
                 Visit(node.Parent);
         }
 
@@ -24,13 +26,19 @@ namespace EncapsulationAnalyzer.Core.Analyzers
         {
             if (node is InterfaceDeclarationSyntax interfaceDeclarationSyntax)
             {
-                Result = interfaceDeclarationSyntax.Modifiers.Any(SyntaxKind.PublicKeyword);
+                Result = interfaceDeclarationSyntax.Modifiers.Any(SyntaxKind.PublicKeyword) ? interfaceDeclarationSyntax : null;
                 return;
             }
             
             if (node is TypeDeclarationSyntax typeDeclaration)
             {
-                Result = typeDeclaration.Modifiers.Any(SyntaxKind.PublicKeyword) && _isPublicMember;
+                Result = typeDeclaration.Modifiers.Any(SyntaxKind.PublicKeyword) && _isPublicMember ? typeDeclaration : null;
+                return;
+            }
+
+            if (node is ExpressionStatementSyntax or BlockSyntax or InvocationExpressionSyntax)
+            {
+                _stop = true;
                 return;
             }
             
