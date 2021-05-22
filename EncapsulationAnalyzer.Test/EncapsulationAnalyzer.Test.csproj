@@ -24,8 +24,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\EncapsulationAnalyzer.Core\EncapsulationAnalyzer.Core.csproj" />
-    <ProjectReference Include="..\EncapsulationAnalyzer\EncapsulationAnalyzer.csproj" />
+    <ProjectReference Include="..\EncapsulationAnalyzer.Core\EncapsulationAnalyzer.Core.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,3 +1,4 @@
+![Nuget](https://img.shields.io/nuget/v/EncapsulationAnalyzer)
 # Roslyn Encapsulation Analyzer
 
 This project uses Roslyn SymbolFinder to find public types in a project, which can be made internal. And it also provides simple refactoring, which indeed makes such types internal.
@@ -10,26 +11,33 @@ It's probably not a big deal until you start to care about encapsulation and sep
 
 ## How to use it
 
+### Installation
+
+Encapsulation analyzer packages as dotnet tool on Nuget.org. To install, run:
+`dotnet tool install --global EncapsulationAnalyzer`
+
+### Usage
+
 Currently this project has only a simple CLI interface. To analyze project run
 
-`EncapsulationAnalyzer.CLI.exe analyze [path-to-sln-file] [project-name]`
+`encapsulation-analyzer analyze [path-to-sln-file] [project-name]`
 
 It will display all found types in a table.
 
 To automatically refactor found types, run
 
-`EncapsulationAnalyzer.CLI.exe refactor [path-to-sln-file] [project-name]`
+`encapsulation-analyzer refactor [path-to-sln-file] [project-name]`
 
 ## Limitations and important details
 
-* This tool does not have a reference cycle-detection mechanism. Therefore public types which cross-reference each other through properties or method arguments will not be detected as unnecessary public.
-* This tool also does a single pass of reference search. Therefore it may require multiple passes of refactoring to hide all possible types in a project.
+* This tool does not have a reference cycles detection mechanism. Therefore public types which cross-reference each other through properties or method arguments won't be detected as unnecessary public.
+* This tool also does a single pass of reference search. Therefore it may require multiple passes of refactoring to encapsulate all possible types in a project.
 
 ## TODO-list
 
 ## Possible improvements
 
-[ ] Package cli as a dotnet tool
+[x] Package cli as a dotnet tool
 
 [ ] Allow to pick which types to refactor
 
