@@ -93,12 +93,16 @@ namespace EncapsulationAnalyzer.Core.Analyzers
                         var tree = referenceLocation.Location.SourceTree;
                         if (tree == null)
                             continue;
+                        
 
                         var walker = new ClimbSyntaxTreeWalker();
                         walker.Visit(tree.GetRoot().FindNode(referenceLocation.Location.SourceSpan));
-                        if (walker.Result)
+                        
+                        if (walker.Result != null)
                         {
-                            goto A;
+                            //symbol equals check doesn't work for some reason, so we will compare syntax nodes instead
+                            if (!publicSymbol.DeclaringSyntaxReferences.Any(r => r.GetSyntax(token) == walker.Result))
+                                goto A;
                         }
                     }
                 }
