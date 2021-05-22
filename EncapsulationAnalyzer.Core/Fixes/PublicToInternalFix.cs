@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace EncapsulationAnalyzer.Core.Fixes
 {
-    public class PublicToInternalFix: IPublicToInternalFixPort
+    internal class PublicToInternalFix: IPublicToInternalFixPort
     {
         private readonly ILogger<PublicToInternalFix> _logger;
 
