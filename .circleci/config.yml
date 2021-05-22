@@ -25,7 +25,7 @@ jobs:
           working_directory: EncapsulationAnalyzer.CLI
           name: Pack dotnet tool
           command: |
-            dotnet pack -C release
+            dotnet pack -c release
             
       - store_artifacts: 
           path: nupkg
