@@ -28,7 +28,7 @@ jobs:
             dotnet pack -c release
             
       - store_artifacts: 
-          path: nupkg
+          path: EncapsulationAnalyzer.CLI/nupkg
           destination: nuget_package
             
 
