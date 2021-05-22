@@ -21,7 +21,7 @@ jobs:
           command: |
             dotnet test EncapsulationAnalyzer.Test.csproj
             
-      - pack:
+      - run:
           working_directory: EncapsulationAnalyzer.CLI
           name: Pack dotnet tool
           command: |
