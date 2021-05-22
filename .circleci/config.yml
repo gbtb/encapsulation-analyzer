@@ -21,6 +21,16 @@ jobs:
           command: |
             dotnet test EncapsulationAnalyzer.Test.csproj
             
+      - pack:
+          working_directory: EncapsulationAnalyzer.CLI
+          name: Pack dotnet tool
+          command: |
+            dotnet pack -C release
+            
+      - store_artifacts: 
+          path: nupkg
+          destination: nuget_package
+            
 
 workflows:
   # Below is the definition of your workflow.
