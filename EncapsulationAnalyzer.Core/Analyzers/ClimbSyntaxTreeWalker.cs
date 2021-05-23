@@ -68,8 +68,8 @@ namespace EncapsulationAnalyzer.Core.Analyzers
 
         public override void VisitFieldDeclaration(FieldDeclarationSyntax node)
         {
-            if (node.Modifiers.Any(SyntaxKind.PublicKeyword))
-                Visit(node.Parent);
+            _isPublicMember = node.Modifiers.Any(SyntaxKind.PublicKeyword);
+            Visit(node.Parent);
         }
     }
 }
