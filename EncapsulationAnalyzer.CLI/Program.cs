@@ -171,7 +171,7 @@ namespace EncapsulationAnalyzer.CLI
             var proj = solution.Projects.FirstOrDefault(p => p.Name == projectName);
             if (proj == null)
             {
-                logger.LogError($"Project not found: {projectName}");
+                logger.LogError("Project not found: {ProjectName}", projectName);
                 return (solution, proj);
             }
 
