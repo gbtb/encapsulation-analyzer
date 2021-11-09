@@ -191,7 +191,7 @@ namespace EncapsulationAnalyzer.CLI
         
         private static EventHandler<WorkspaceDiagnosticEventArgs> HandleWorkspaceFailure(ILogger logger)
         {
-            return (object sender, WorkspaceDiagnosticEventArgs e) => logger.LogTrace("Error/Warning while opening solution: {Message}", replaceRegex.Replace(e.Diagnostic.ToString(), ""));
+            return (object? sender, WorkspaceDiagnosticEventArgs e) => logger.LogTrace("Error/Warning while opening solution: {Message}", replaceRegex.Replace(e.Diagnostic.ToString(), ""));
         }
     }
 }

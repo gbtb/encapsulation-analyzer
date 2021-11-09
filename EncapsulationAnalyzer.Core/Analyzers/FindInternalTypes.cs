@@ -37,7 +37,7 @@ namespace EncapsulationAnalyzer.Core.Analyzers
             }
             
             var compilation = await proj.WithCompilationOptions(
-                proj.CompilationOptions
+                proj.CompilationOptions!
                     .WithAssemblyIdentityComparer(DesktopAssemblyIdentityComparer.Default)
                     .WithStrongNameProvider(new DesktopStrongNameProvider()))
                 .GetCompilationAsync(token);
@@ -199,7 +199,7 @@ namespace EncapsulationAnalyzer.Core.Analyzers
             var otherProjects = graph.GetProjectsThatDirectlyDependOnThisProject(proj.Id);
 
             var friendlyAssemblyNames = compilation.Assembly.GetAttributes()
-                .Where(a => a.AttributeClass.Name == "InternalsVisibleTo" || a.AttributeClass.Name == "InternalsVisibleToAttribute")
+                .Where(a => a.AttributeClass?.Name is "InternalsVisibleTo" or "InternalsVisibleToAttribute")
                 .Select(a =>
                 {
                     if (a.ApplicationSyntaxReference?.GetSyntax() is AttributeSyntax s)
@@ -214,7 +214,7 @@ namespace EncapsulationAnalyzer.Core.Analyzers
             foreach (var otherProjectId in otherProjects)
             {
                 var otherProject = solution.GetProject(otherProjectId);
-                if (friendlyAssemblyNames.Contains(otherProject.AssemblyName))
+                if (otherProject == null || friendlyAssemblyNames.Contains(otherProject.AssemblyName))
                     continue;
 
                 foreach (var projectDocument in otherProject.Documents)

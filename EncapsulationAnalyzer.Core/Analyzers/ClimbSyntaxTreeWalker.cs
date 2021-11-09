@@ -12,17 +12,17 @@ namespace EncapsulationAnalyzer.Core.Analyzers
     internal class ClimbSyntaxTreeWalker: CSharpSyntaxWalker
     {
         private bool _isPublicMember;
-        public TypeDeclarationSyntax Result { get; private set; }
+        public TypeDeclarationSyntax? Result { get; private set; }
 
         private bool _stop;
 
         public override void DefaultVisit(SyntaxNode node)
         {
-            if (node != null && !_stop)
+            if (!_stop)
                 Visit(node.Parent);
         }
 
-        public override void Visit(SyntaxNode node)
+        public override void Visit(SyntaxNode? node)
         {
             if (node is InterfaceDeclarationSyntax interfaceDeclarationSyntax)
             {

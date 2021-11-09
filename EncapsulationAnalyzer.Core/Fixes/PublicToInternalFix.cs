@@ -44,9 +44,14 @@ namespace EncapsulationAnalyzer.Core.Fixes
                 var rewriter = new AccesibilityRewriter(declarationNodes);
 
                 var newSolutionDoc = solution.GetDocument(oldSolutionDoc.Id);
+                if (newSolutionDoc == null)
+                    continue;
+                
                 var newSolutionRoot = await newSolutionDoc.GetSyntaxRootAsync();
                 
                 var newRoot = rewriter.Visit(newSolutionRoot);
+                if (newRoot == null)
+                    continue;
 
                 solution = newSolutionDoc.WithSyntaxRoot(newRoot).Project.Solution;
             }
