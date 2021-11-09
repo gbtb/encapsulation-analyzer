@@ -49,7 +49,8 @@ namespace EncapsulationAnalyzer.Core.Analyzers
             }
 
             var publicSymbols = GetNamedTypeSymbols(compilation, compilation.Assembly,
-                s => s.DeclaredAccessibility == Accessibility.Public).ToList();
+                s => s.DeclaredAccessibility == Accessibility.Public);
+            var publicSymbolsQueue = new Queue<INamedTypeSymbol>(publicSymbols);
             progressSubscriber.Report(new FindInternalClassesProgress(FindInternalTypesStep.GetPublicSymbols, 100));
             progressSubscriber.Report(new FindInternalClassesProgress(FindInternalTypesStep.GetDocsToSearch, 0));
             
@@ -58,34 +59,57 @@ namespace EncapsulationAnalyzer.Core.Analyzers
 
             progressSubscriber.Report(
                 new FindInternalClassesProgress(FindInternalTypesStep.LookForReferencesInOtherProjects, 0,
-                    publicSymbols.Count));
+                    publicSymbolsQueue.Count));
             var i = 0;
 
-            var resultList = new List<INamedTypeSymbol>();
+            #pragma warning disable RS1024
+            var visitedSymbols = new Dictionary<INamedTypeSymbol, Accessibility>(SymbolEqualityComparer.Default);
+            #pragma warning restore RS1024
             var thisProjectDocs = proj.Documents.ToImmutableHashSet();
-            foreach (var publicSymbol in publicSymbols)
+            while(publicSymbolsQueue.Count > 0)
             {
+                var publicSymbol = publicSymbolsQueue.Dequeue();
                 if (token.IsCancellationRequested)
                     return Enumerable.Empty<INamedTypeSymbol>();
 
                 progressSubscriber.Report(new FindInternalClassesProgress(
-                    FindInternalTypesStep.LookForReferencesInOtherProjects, ++i, publicSymbols.Count));
+                    FindInternalTypesStep.LookForReferencesInOtherProjects, ++i, publicSymbolsQueue.Count));
+                
+                var hasParentSymbol = false;
+                if (publicSymbol.BaseType != null)
+                {
+                    if (!publicSymbol.BaseType.IsExtern && publicSymbol.BaseType.DeclaredAccessibility == Accessibility.Public)
+                    {
+                        hasParentSymbol = true;
+                        if (!visitedSymbols.ContainsKey(publicSymbol.BaseType))
+                        {
+                            publicSymbolsQueue.Enqueue(publicSymbol.BaseType);
+                            publicSymbolsQueue.Enqueue(publicSymbol);
+                            continue;
+                        }
+                    }
+                } 
                 
                 var hasExternalReference = await FindExternalReferenceAsync(solution, token, proj, publicSymbol, docsToSearchIn);
                 if (hasExternalReference)
-                    continue;
+                {
+                    visitedSymbols[publicSymbol] = Accessibility.Public;
+                    goto MarkParentsAndContinue;
+                }
 
                 if (publicSymbol.MightContainExtensionMethods)
                 {
                     hasExternalReference =
                         await FindExtensionMethodsReferencesAsync(solution, token, proj, publicSymbol, docsToSearchIn);
-                   
+
                     if (hasExternalReference)
-                        continue;
+                    {
+                        visitedSymbols[publicSymbol] = Accessibility.Public;
+                        goto MarkParentsAndContinue;
+                    }
                 }
                 
-                var refs = await SymbolFinder.FindReferencesAsync(publicSymbol, solution, null, thisProjectDocs,
-                    CancellationToken.None);
+                var refs = await SymbolFinder.FindReferencesAsync(publicSymbol, solution, null, thisProjectDocs, token);
                 foreach (var referencedSymbol in refs.Where(r => r.Definition is INamedTypeSymbol && r.Locations.Any()))
                 {
                     foreach (var referenceLocation in referencedSymbol.Locations.Where(l => !l.IsCandidateLocation))
@@ -93,26 +117,39 @@ namespace EncapsulationAnalyzer.Core.Analyzers
                         var tree = referenceLocation.Location.SourceTree;
                         if (tree == null)
                             continue;
-                        
 
                         var walker = new ClimbSyntaxTreeWalker();
-                        walker.Visit(tree.GetRoot().FindNode(referenceLocation.Location.SourceSpan));
+                        walker.Visit((await tree.GetRootAsync(token)).FindNode(referenceLocation.Location.SourceSpan));
                         
                         if (walker.Result != null)
                         {
                             //symbol equals check doesn't work for some reason, so we will compare syntax nodes instead
                             if (!publicSymbol.DeclaringSyntaxReferences.Any(r => r.GetSyntax(token) == walker.Result))
-                                goto A;
+                                goto MarkParentsAndContinue;
                         }
                     }
                 }
+
+                visitedSymbols[publicSymbol] = Accessibility.Internal;
+                continue;
                 
-                resultList.Add(publicSymbol);
-                
-                A: continue;
+                MarkParentsAndContinue:
+                if (hasParentSymbol)
+                    MarkParentsAsPublic(visitedSymbols, publicSymbol);
             }
 
-            return resultList;
+            return visitedSymbols.Where(s => s.Value == Accessibility.Internal)
+                .Select(s => s.Key).ToList();
+        }
+
+        private void MarkParentsAsPublic(IDictionary<INamedTypeSymbol, Accessibility> visitedSymbols,
+            INamedTypeSymbol publicSymbol)
+        {
+            while (publicSymbol.BaseType is { IsExtern: false })
+            {
+                visitedSymbols[publicSymbol.BaseType] = Accessibility.Public;
+                publicSymbol = publicSymbol.BaseType;
+            }
         }
 
         private async Task<bool> FindExtensionMethodsReferencesAsync(Solution solution, CancellationToken token, Project proj, INamedTypeSymbol publicSymbol, ImmutableHashSet<Document> docsToSearchIn)

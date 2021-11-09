@@ -447,6 +447,56 @@ namespace EncapsulationAnalyzer.Test
         }
         
         [Test]
+        public async Task ShouldSkipInheritorIfBaseClassMethodIsPublic()
+        {
+            var workspace = new AdhocWorkspace();
+            var solution = workspace.AddSolution(SolutionInfo.Create(SolutionId.CreateNewId(), VersionStamp.Default));
+            var libProject = workspace.AddProject(ProjectInfo.Create(ProjectId.CreateNewId(), VersionStamp.Default, "Lib", "Lib", LanguageNames.CSharp));
+
+            var sourceText = SourceText.From(@"
+                using System;
+                
+                namespace Lib 
+                {
+                    public class Foo
+                    {
+                        public virtual void A();
+                    }
+
+                    public class Bar: Foo
+                    {
+                        public override void A(){}
+                    }
+                }
+            ");
+            workspace.AddDocument(libProject.Id, "Lib.cs", sourceText);
+            var uiProject = workspace.AddProject(ProjectInfo.Create(ProjectId.CreateNewId(), VersionStamp.Default, "UI", "UI", LanguageNames.CSharp, 
+                projectReferences: new [] {new ProjectReference(libProject.Id)}));
+            sourceText = SourceText.From(@"
+                using System;
+                using Lib;
+
+                namespace UI
+                {
+                    public static class Program 
+                    {
+                        public static void Main(string[] args)
+                        {
+                            var foo = new Bar();
+                        }
+                    }
+                }
+            ");
+            workspace.AddDocument(uiProject.Id, "UI.cs", sourceText);
+
+
+            var service = _provider.GetRequiredService<IFindInternalTypesPort>();
+            var source = new CancellationTokenSource();
+            var internalSymbols = await service.FindProjClassesWhichCanBeInternalAsync(workspace.CurrentSolution, libProject.Id, new Progress<FindInternalClassesProgress>(), source.Token);
+            Assert.AreEqual(0, internalSymbols.Count());
+        }
+        
+        [Test]
         public async Task ShouldCheckFieldDeclaration()
         {
             var workspace = new AdhocWorkspace();
