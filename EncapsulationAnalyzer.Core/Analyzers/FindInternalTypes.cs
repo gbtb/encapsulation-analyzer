@@ -35,7 +35,7 @@ namespace EncapsulationAnalyzer.Core.Analyzers
                 _logger.LogError("Project {ProjectId} not found in solution", projectId);
                 return Enumerable.Empty<INamedTypeSymbol>();
             }
-            
+
             var compilation = await proj.WithCompilationOptions(
                 proj.CompilationOptions!
                     .WithAssemblyIdentityComparer(DesktopAssemblyIdentityComparer.Default)
@@ -83,7 +83,8 @@ namespace EncapsulationAnalyzer.Core.Analyzers
                         hasParentSymbol = true;
                         if (!visitedSymbols.ContainsKey(publicSymbol.BaseType))
                         {
-                            publicSymbolsQueue.Enqueue(publicSymbol.BaseType);
+                            if (publicSymbol.BaseType.ContainingAssembly != publicSymbol.ContainingAssembly)
+                                publicSymbolsQueue.Enqueue(publicSymbol.BaseType);
                             publicSymbolsQueue.Enqueue(publicSymbol);
                             continue;
                         }
