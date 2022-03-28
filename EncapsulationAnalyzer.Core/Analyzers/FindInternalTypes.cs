@@ -109,7 +109,7 @@ namespace EncapsulationAnalyzer.Core.Analyzers
                     }
                 }
                 
-                var refs = await SymbolFinder.FindReferencesAsync(publicSymbol, solution, null, thisProjectDocs, token);
+                var refs = await SymbolFinder.FindReferencesAsync(publicSymbol, solution, null, null, token);
                 foreach (var referencedSymbol in refs.Where(r => r.Definition is INamedTypeSymbol && r.Locations.Any()))
                 {
                     foreach (var referenceLocation in referencedSymbol.Locations.Where(l => !l.IsCandidateLocation))
@@ -233,7 +233,7 @@ namespace EncapsulationAnalyzer.Core.Analyzers
         private static ImmutableHashSet<Document> GetDocsToSearchIn(Solution solution, Project proj, Compilation compilation)
         {
             var graph = solution.GetProjectDependencyGraph();
-            var otherProjects = graph.GetProjectsThatDirectlyDependOnThisProject(proj.Id);
+            var otherProjects = graph.GetProjectsThatTransitivelyDependOnThisProject(proj.Id);
 
             var friendlyAssemblyNames = compilation.Assembly.GetAttributes()
                 .Where(a => a.AttributeClass?.Name is "InternalsVisibleTo" or "InternalsVisibleToAttribute")
