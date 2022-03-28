@@ -83,9 +83,8 @@ namespace EncapsulationAnalyzer.Core.Analyzers
                         hasParentSymbol = true;
                         if (!visitedSymbols.ContainsKey(publicSymbol.BaseType))
                         {
-                            if (publicSymbol.BaseType.ContainingAssembly != publicSymbol.ContainingAssembly)
+                            if (publicSymbol.BaseType.ContainingAssembly.Equals(publicSymbol.ContainingAssembly, SymbolEqualityComparer.Default))
                                 publicSymbolsQueue.Enqueue(publicSymbol.BaseType);
-                            publicSymbolsQueue.Enqueue(publicSymbol);
                             continue;
                         }
                     }
